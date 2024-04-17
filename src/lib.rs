@@ -50,7 +50,45 @@ pub fn parse_arguments(args: Vec<String>) -> Option<Command> {
         file_directories: iter.map(|x| x.to_owned()).collect(),
     });
 }
+use std::{fs, str::Split};
+pub fn process_query(command: Command) -> Option<QueryResult> {
+    let mut search_tokens: Vec<String> = vec![command.default_expression];
+    let mut search_directory: bool = false;
+    let mut query_result: QueryResult = QueryResult::new();
+    for option in command.options {
+        match option {
+            GrepOption::Expression(_expression) => {
+                search_tokens.push(_expression);
+            },
+            GrepOption::DirectorySearch => {
+                search_directory = true;
+            }
+            _ => ()
+        }
+    }
+    if (search_directory){
+        for file in command.file_directories {
+            let mut file_lines: Split<'static, char>;
+            {
+                let file_content = fs::read_to_string(file).expect("rsgrep: Can't open file.");
+                file_lines = file_content.clone().split('\n');
 
+            }
+            for (i, line) in file_lines.into_iter().enumerate() {
+                query_result.results.push(Line {
+                    line_number: i,
+                    line_content: line.to_owned()
+                })
+            }
+
+            
+        }
+    }
+    else {
+        panic!("rsgrep: Feature not implemented");
+    }   
+    None
+}
 
 #[derive(Debug)]
 pub enum GrepOption {
@@ -71,6 +109,14 @@ impl Command {
     }
     
 }
+
+impl QueryResult{
+    fn new() -> QueryResult {
+        QueryResult {
+            results: Vec::new()
+        }
+    }
+}
 #[derive(Debug)]
 
 pub struct Command {
@@ -78,12 +124,11 @@ pub struct Command {
     file_directories: Vec<String>,
     default_expression: String,
 }
-pub struct Result {
-    command: Command,
-    results: Vec<Line>,
+pub struct QueryResult {
+    results: Vec<Line>
 }
 pub struct Line {
-    line_number: u32,
+    line_number: usize,
     line_content: String,
 }
 
